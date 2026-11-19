@@ -1,0 +1,86 @@
+@startuml state_machine_uml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+
+skinparam state {
+    BackgroundColor #F8FAFC
+    BorderColor #0284C7
+    ArrowColor #0F172A
+    StartColor #16A34A
+    EndColor #DC2626
+}
+
+title **CyberSentinel AI - Diagramme d'États-Transitions : Cycle de Vie d'un Fichier et d'une Menace**
+
+[*] --> FichierIdentifie : Découverte / Sélection
+
+state FichierIdentifie {
+    description : Fichier présent sur le système de fichiers hôte
+}
+
+FichierIdentifie --> ValidationChemin : Lancer analyse
+state ValidationChemin {
+    description : Contrôle PathSecurityValidator (Anti-traversal, ADS, DOS devices)
+}
+
+ValidationChemin --> RejeteSecurite : Chemin illicite / Attaque détectée
+state RejeteSecurite #FEE2E2 {
+    description : Exception levée, journalisation Critical RFC 5424
+}
+RejeteSecurite --> [*]
+
+ValidationChemin --> EnCoursDAnalyse : Chemin certifié sûr
+state EnCoursDAnalyse {
+    description : Extraction PE, Inférence ONNX EMBER, ClamAV, YARA
+}
+
+EnCoursDAnalyse --> FichierSain : Score < 0.20
+state FichierSain #DCFCE7 {
+    description : Risque nul, fichier conservé en l'état
+}
+
+EnCoursDAnalyse --> FichierSuspect : 0.50 <= Score < 0.85
+state FichierSuspect #FEF3C7 {
+    description : Risque modéré/élevé, signalement à l'opérateur
+}
+
+EnCoursDAnalyse --> FichierMalveillant : Score >= 0.85 ou Signature certifiée
+state FichierMalveillant #FEE2E2 {
+    description : Risque Critique, alerte prioritaire immédiate
+}
+
+FichierMalveillant --> QuarantaineChiffree : Ordre de mise en quarantaine
+state QuarantaineChiffree #E0E7FF {
+    description : Chiffrement AES-256-GCM, Nonce 96 bits, Tag 128 bits,\nSignature HMAC-SHA256, Archive ".qfile" dans vault
+}
+
+QuarantaineChiffree --> VerificationRestauration : Demande de restauration
+state VerificationRestauration {
+    description : Vérification HMAC-SHA256 & contrôle de chemin cible sûr
+}
+
+VerificationRestauration --> EchecIntegrite : Altération détectée / Chemin protégé
+state EchecIntegrite #FEE2E2 {
+    description : CryptographicException, restauration bloquée
+}
+EchecIntegrite --> QuarantaineChiffree : Maintien de l'isolation
+
+VerificationRestauration --> FichierRestaure : Intégrité validée à 100%
+state FichierRestaure #DCFCE7 {
+    description : Déchiffrement à l'emplacement d'origine,\nsuppression du conteneur .qfile
+}
+
+QuarantaineChiffree --> PurgeDefinitive : Ordre de destruction
+state PurgeDefinitive #FCA5A5 {
+    description : Écrasement aléatoire des blocs disque et suppression
+}
+
+FichierSain --> [*]
+FichierRestaure --> [*]
+PurgeDefinitive --> [*]
+
+@enduml
+

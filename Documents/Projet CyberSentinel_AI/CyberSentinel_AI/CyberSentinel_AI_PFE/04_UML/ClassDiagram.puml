@@ -1,0 +1,286 @@
+@startuml classes
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+    HeaderBackgroundColor #E2E8F0
+}
+
+skinparam interface {
+    BackgroundColor #F0FDF4
+    BorderColor #16A34A
+    HeaderBackgroundColor #DCFCE7
+}
+
+skinparam enum {
+    BackgroundColor #FEF2F2
+    BorderColor #DC2626
+    HeaderBackgroundColor #FEE2E2
+}
+
+title **CyberSentinel AI - Diagramme de Classes Métier (Clean Architecture)**
+
+package "1. CyberSentinel.Domain" {
+
+    class ThreatFinding {
+        +Id: Guid
+        +Engine: EngineType
+        +ThreatName: string
+        +Severity: RiskLevel
+        +ConfidenceScore: double
+        +DetectionDetails: string
+    }
+
+    class ScannedFileRecord {
+        +Id: Guid
+        +FilePath: string
+        +Sha256Hash: string
+        +FileSizeBytes: long
+        +Verdict: ThreatVerdict
+        +CompositeThreatScore: double
+        +ScannedAt: DateTime
+    }
+
+    class QuarantineRecord {
+        +Id: Guid
+        +OriginalFilePath: string
+        +QuarantineBlobPath: string
+        +Sha256Hash: string
+        +HmacSignature: byte[]
+        +AesIv: byte[]
+        +AesAuthTag: byte[]
+        +Status: QuarantineStatus
+        +QuarantinedAt: DateTime
+    }
+
+    class InstalledApplication {
+        +Id: Guid
+        +DisplayName: string
+        +Publisher: string
+        +DisplayVersion: string
+        +Architecture: AppArchitecture
+        +PackageIdentifier: string?
+        +CanonicalCpe: string?
+        +InstallDate: DateTime?
+    }
+
+    class VulnerabilityRecord {
+        +CveId: string
+        +Description: string
+        +CvssScore: double
+        +Severity: CvssSeverity
+        +AffectedSoftware: string
+        +AffectedVersionsSummary: string
+        +RemediationUrl: string
+    }
+
+    class VerdictArbitrator {
+        +Arbitrate(clamResult, yaraResult, aiResult) ScanVerdict
+        +CalculateCompositeScore(clamScore, yaraScore, aiScore) double
+    }
+
+    class CpeIdentifier <<ValueObject>> {
+        +Part: string
+        +Vendor: string
+        +Product: string
+        +Version: string
+        +ToCpe23Uri() string
+    }
+
+    enum ThreatVerdict {
+        Clean
+        Suspicious
+        Malware
+        Error
+        BypassedNonPe
+    }
+
+    enum RiskLevel {
+        Clean
+        Low
+        Medium
+        High
+        Critical
+    }
+}
+
+package "2. CyberSentinel.Application" {
+
+    interface IScanOrchestrator {
+        +ScanFileAsync(filePath, ct) Task<FileAnalysisResultDto>
+        +ScanDirectoryAsync(dirPath, progress, ct) Task<ScanSessionSummaryDto>
+    }
+
+    interface IAntivirusScanner {
+        +ScanFileAsync(filePath, ct) Task<EngineScanResultDto>
+    }
+
+    interface IYaraScanner {
+        +ScanFileAsync(filePath, ct) Task<EngineScanResultDto>
+    }
+
+    interface IAiMalwareClassifier {
+        +ClassifyPeFileAsync(filePath, ct) Task<AiInferenceResultDto>
+    }
+
+    interface IQuarantineService {
+        +QuarantineFileAsync(filePath, ct) Task<QuarantineRecord>
+        +RestoreFileAsync(recordId, ct) Task<bool>
+        +PurgeFileAsync(recordId, ct) Task<bool>
+    }
+
+    interface IVulnerabilityScannerService {
+        +ScanVulnerabilitiesAsync(apps, ct) Task<IReadOnlyList<VulnerabilityRecord>>
+    }
+
+    interface ISystemInventoryService {
+        +GetInstalledSoftwareAsync(ct) Task<IReadOnlyList<InstalledApplication>>
+    }
+
+    interface IUpdateManagerService {
+        +CheckUpdatesAsync(ct) Task<IReadOnlyList<SoftwareUpdateDto>>
+        +UpgradePackageAsync(packageId, confirmed, ct) Task<UpdateOperationResultDto>
+    }
+
+    class MalwareScanOrchestrator {
+        -IAntivirusScanner _clamAv
+        -IYaraScanner _yara
+        -IAiMalwareClassifier _aiClassifier
+        -VerdictArbitrator _arbitrator
+        -ISecurityLogger _logger
+        +ScanFileAsync(filePath, ct) Task<FileAnalysisResultDto>
+    }
+
+    class PathSecurityValidator {
+        +ValidateAndNormalizePath(path) string
+        +IsWithinAllowedRoot(path, root) bool
+        +IsRestrictedSystemPath(path) bool
+    }
+}
+
+package "3. CyberSentinel.Infrastructure" {
+
+    class ClamAvScanner {
+        -string _clamHost
+        -int _clamPort
+        +ScanFileAsync(filePath, ct) Task<EngineScanResultDto>
+    }
+
+    class YaraScanner {
+        -byte[] _compiledRules
+        +ScanFileAsync(filePath, ct) Task<EngineScanResultDto>
+    }
+
+    class QuarantineManager {
+        -string _vaultDirectory
+        +QuarantineFileAsync(filePath, ct) Task<QuarantineRecord>
+        +RestoreFileAsync(recordId, ct) Task<bool>
+    }
+
+    class WindowsRegistryScanner {
+        +ScanUninstallKeys() List<InstalledApplication>
+    }
+
+    class WinGetManager {
+        +ListPackagesAsync(ct) Task<Dictionary<string, string>>
+        +ListUpgradesAsync(ct) Task<List<SoftwareUpdateDto>>
+        +UpgradePackageAsync(packageId, ct) Task<ProcessExecutionResult>
+    }
+
+    class NvdVulnerabilityProvider {
+        -HttpClient _httpClient
+        -NvdRateLimiter _rateLimiter
+        +GetCvesForCpeAsync(cpe, ct) Task<List<VulnerabilityRecord>>
+    }
+
+    class SqliteInventoryRepository {
+        -DbContext _dbContext
+        +SaveInventorySessionAsync(session, ct) Task
+        +GetLatestInventoryAsync(ct) Task<InventorySession?>
+    }
+
+    class PdfReportGenerator {
+        +GenerateReport(reportRecord, stream) void
+    }
+}
+
+package "4. CyberSentinel.AI" {
+
+    class PeFeatureExtractor {
+        +ExtractAsync(filePath, ct) Task<EmberFeatureVector>
+        -ExtractByteHistogram(span) float[]
+        -ComputeShannonEntropy(span) float
+        -ParseImportTable(peStream) float[]
+    }
+
+    class OnnxMalwareInferenceService {
+        -InferenceSession _session
+        -string _expectedModelSha256
+        +ClassifyPeFileAsync(filePath, ct) Task<AiInferenceResultDto>
+        +VerifyModelIntegrityAsync(modelPath, ct) Task<bool>
+    }
+
+    class EmberFeatureVector {
+        +Vector: float[] (2381 dimensions)
+        +IsPeValid: bool
+    }
+}
+
+package "5. CyberSentinel.Desktop (MVVM)" {
+
+    class MalwareScannerViewModel {
+        -IScanOrchestrator _orchestrator
+        -IQuarantineService _quarantine
+        +SelectedFilePath: string
+        +CompositeScore: double
+        +CurrentVerdict: ThreatVerdict
+        +ScanFileCommand: ICommand
+        +QuarantineFileCommand: ICommand
+    }
+
+    class VulnerabilityCenterViewModel {
+        -IVulnerabilityScannerService _vulnService
+        +Vulnerabilities: ObservableCollection<VulnerabilityRecord>
+        +RefreshVulnerabilitiesCommand: ICommand
+    }
+
+    class UpdateManagerViewModel {
+        -IUpdateManagerService _updateService
+        +Updates: ObservableCollection<SoftwareUpdateDto>
+        +InstallUpdateCommand: ICommand
+    }
+}
+
+' Relations d'héritage et d'implémentation
+IScanOrchestrator <|.. MalwareScanOrchestrator
+IAntivirusScanner <|.. ClamAvScanner
+IYaraScanner <|.. YaraScanner
+IAiMalwareClassifier <|.. OnnxMalwareInferenceService
+IQuarantineService <|.. QuarantineManager
+
+' Dépendances
+MalwareScanOrchestrator --> IAntivirusScanner
+MalwareScanOrchestrator --> IYaraScanner
+MalwareScanOrchestrator --> IAiMalwareClassifier
+MalwareScanOrchestrator --> VerdictArbitrator
+MalwareScanOrchestrator ..> PathSecurityValidator : validation
+
+OnnxMalwareInferenceService --> PeFeatureExtractor
+PeFeatureExtractor ..> EmberFeatureVector : produit
+
+MalwareScannerViewModel --> IScanOrchestrator
+MalwareScannerViewModel --> IQuarantineService
+VulnerabilityCenterViewModel --> IVulnerabilityScannerService
+UpdateManagerViewModel --> IUpdateManagerService
+
+ScannedFileRecord "1" *-- "0..*" ThreatFinding
+QuarantineRecord --> QuarantineStatus
+
+@enduml
+

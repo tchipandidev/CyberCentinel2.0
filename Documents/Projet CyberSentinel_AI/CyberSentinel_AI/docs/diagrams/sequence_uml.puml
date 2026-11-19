@@ -1,0 +1,92 @@
+@startuml sequence_uml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+skinparam sequenceArrowThickness 1.5
+
+autonumber "<b>[00]</b>"
+
+actor "Opérateur Sécurité" as User
+participant "Desktop (WPF / MVVM)\nMalwareScannerViewModel" as UI
+participant "Application\nMalwareScanOrchestrator" as Orchestrator
+participant "Application\nPathSecurityValidator" as Validator
+participant "Infrastructure\nClamAvScanner" as ClamAV
+participant "Infrastructure\nYaraScanner" as YARA
+participant "AI Module\nOnnxInferenceService" as AI
+participant "Domain\nVerdictArbitrator" as Arbitrator
+participant "Infrastructure\nQuarantineManager" as Quarantine
+database "Stockage Sécurisé\n%ProgramData%\\.qfile" as Vault
+
+title **CyberSentinel AI - Diagramme de Séquence : Analyse Multi-Moteurs & Quarantaine Authentifiée**
+
+User -> UI : Sélectionne "payload_suspect.exe" et clique "Scanner"
+activate UI
+
+UI -> Orchestrator : ScanFileAsync("payload_suspect.exe")
+activate Orchestrator
+
+Orchestrator -> Validator : ValidateAndNormalizePath("payload_suspect.exe")
+activate Validator
+Validator -> Validator : Vérifier absence de caractères nuls (\0),\nNTFS ADS (:), et noms DOS (CON, NUL)
+Validator --> Orchestrator : Chemin canonique certifié sécurisé
+deactivate Validator
+
+note over Orchestrator, AI : Exécution asynchrone parallélisée des 3 moteurs d'analyse
+
+par Analyse Parallèle Multi-Moteurs
+    Orchestrator -> ClamAV : ScanFileAsync(chemin)
+    activate ClamAV
+    ClamAV -> ClamAV : Requête démon TCP 127.0.0.1:3310
+    ClamAV --> Orchestrator : EngineScanResult (Signatures)
+    deactivate ClamAV
+else
+    Orchestrator -> YARA : ScanFileAsync(chemin)
+    activate YARA
+    YARA -> YARA : Correspondance règles heuristiques mémoire
+    YARA --> Orchestrator : EngineScanResult (Règles déclenchées)
+    deactivate YARA
+else
+    Orchestrator -> AI : ClassifyPeFileAsync(chemin)
+    activate AI
+    AI -> AI : Extraction 2381-D (PeFeatureExtractor)\net Inférence GBDT (ONNX Runtime)
+    AI --> Orchestrator : AiInferenceResult (Score prédictif)
+    deactivate AI
+end
+
+Orchestrator -> Arbitrator : Arbitrate(clamRes, yaraRes, aiRes)
+activate Arbitrator
+Arbitrator -> Arbitrator : Score = Max(Clam*1.0, YARA*0.9, AI*0.85)\nSeuil critique >= 0.85
+Arbitrator --> Orchestrator : Verdict = Malware, Score = 0.94, RiskLevel = Critical
+deactivate Arbitrator
+
+Orchestrator --> UI : FileAnalysisResultDto (Alerte Rouge)
+deactivate Orchestrator
+
+UI --> User : Affichage Verdict "MALWARE" & Alerte Critique
+deactivate UI
+
+== Phase de Remédiation : Mise en Quarantaine Cryptographique ==
+
+User -> UI : Clique sur "Mettre en quarantaine"
+activate UI
+
+UI -> Quarantine : QuarantineFileAsync("payload_suspect.exe")
+activate Quarantine
+
+Quarantine -> Quarantine : Verrouiller et lire le flux binaire
+Quarantine -> Quarantine : Générer Nonce IV aléatoire (96 bits)
+Quarantine -> Quarantine : Chiffrer le binaire en AES-256-GCM
+Quarantine -> Quarantine : Calculer signature d'intégrité HMAC-SHA256
+Quarantine -> Vault : Écrire conteneur étanche ".qfile"
+Quarantine -> Quarantine : Supprimer en toute sécurité le fichier source
+
+Quarantine --> UI : QuarantineRecord (ID, Date, Hash SHA-256)
+deactivate Quarantine
+
+UI --> User : Confirmation visuelle : "Fichier neutralisé en quarantaine"
+deactivate UI
+
+@enduml
+

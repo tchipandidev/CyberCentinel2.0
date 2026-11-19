@@ -1,0 +1,146 @@
+==============================================================================
+CYBERSENTINEL AI - MODÈLE LOGIQUE DE DONNÉES (MLD RELATIONNEL / LOOPING)
+==============================================================================
+Méthode de dérivation : Règles standard de passage MCD -> MLD (Merise / Looping)
+Forme Normale         : Troisième Forme Normale (3NF stricte)
+Auteur                : Équipe d'Ingénierie CyberSentinel AI
+Date                  : Novembre 2026
+==============================================================================
+
+------------------------------------------------------------------------------
+1. RÈGLES DE TRANSFORMATION APPLIQUÉES (MCD -> MLD)
+------------------------------------------------------------------------------
+R1 : Toute entité devient une relation (table) dont la clé primaire est l'identifiant.
+R2 : L'association (1,1) --- (1,n) [CONTENIR] se traduit par l'injection de la clé 
+     primaire de l'entité père (SESSION_INVENTAIRE) comme clé étrangère (#ID_SESSION)
+     dans la table fille (InstalledSoftware).
+R3 : L'association (0,n) --- (0,n) [AFFECTER] se traduit par la création d'une table 
+     d'association intermédiaire (SoftwareVulnerabilities) dont la clé primaire composite
+     est formée par les deux identifiants (#ID_LOGICIEL, #CVE_ID), enrichie de l'attribut
+     d'association (MatchStatus).
+R4 : L'association (0,1) --- (1,1) [ISOLER] se traduit par l'intégration de la clé 
+     étrangère de FICHIER_SCANNE (#ID_FICHIER_SCANNE) dans la table Quarantaine, avec
+     une contrainte d'unicité (UNIQUE) pour garantir la bijectivité.
+R5 : L'association (0,1) --- (1,1) [DISPOSER] se traduit par l'intégration de la clé
+     étrangère (#ID_LOGICIEL) dans la table SoftwareUpdates.
+
+------------------------------------------------------------------------------
+2. STRUCTURE DU MLD RELATIONNEL (3NF)
+------------------------------------------------------------------------------
+
+InventorySessions (
+    ID_SESSION                  TEXT PRIMARY KEY,
+    SnapshotDate                DATETIME NOT NULL,
+    TotalApplicationsCount      INTEGER NOT NULL DEFAULT 0,
+    X64ApplicationsCount        INTEGER NOT NULL DEFAULT 0,
+    X86ApplicationsCount        INTEGER NOT NULL DEFAULT 0,
+    OtherArchCount              INTEGER NOT NULL DEFAULT 0,
+    MachineName                 TEXT(100) NOT NULL,
+    OsVersion                   TEXT(200) NOT NULL
+);
+
+InstalledSoftware (
+    ID_LOGICIEL                 TEXT PRIMARY KEY,
+    #ID_SESSION                 TEXT NOT NULL,
+    DisplayName                 TEXT(255) NOT NULL,
+    Publisher                   TEXT(255) NOT NULL DEFAULT 'Éditeur inconnu',
+    DisplayVersion              TEXT(100) NOT NULL DEFAULT 'Non spécifiée',
+    Architecture                TEXT(20) NOT NULL DEFAULT 'Unknown',
+    InstallDate                 DATETIME,
+    InstallLocation             TEXT(500),
+    IdentificationSource        TEXT(100) NOT NULL,
+    PackageIdentifier           TEXT(150),
+    CanonicalCpe                TEXT(255),
+    IsSystemComponent           INTEGER NOT NULL DEFAULT 0,
+    DiscoveredAt                DATETIME NOT NULL,
+    FOREIGN KEY (#ID_SESSION) REFERENCES InventorySessions(ID_SESSION) ON DELETE CASCADE
+);
+
+Vulnerabilities (
+    CVE_ID                      TEXT(20) PRIMARY KEY,
+    CvssScore                   REAL NOT NULL DEFAULT 0.0,
+    Severity                    TEXT(20) NOT NULL,
+    Description                 TEXT NOT NULL,
+    RemediationUrl              TEXT,
+    PublishedDate               DATETIME
+);
+
+SoftwareVulnerabilities (
+    #ID_LOGICIEL                TEXT NOT NULL,
+    #CVE_ID                     TEXT(20) NOT NULL,
+    MatchStatus                 TEXT(30) NOT NULL,
+    DetectedAt                  DATETIME NOT NULL,
+    PRIMARY KEY (#ID_LOGICIEL, #CVE_ID),
+    FOREIGN KEY (#ID_LOGICIEL) REFERENCES InstalledSoftware(ID_LOGICIEL) ON DELETE CASCADE,
+    FOREIGN KEY (#CVE_ID) REFERENCES Vulnerabilities(CVE_ID) ON DELETE RESTRICT
+);
+
+SoftwareUpdates (
+    ID_MAJ                      TEXT PRIMARY KEY,
+    #ID_LOGICIEL                TEXT NOT NULL UNIQUE,
+    PackageIdentifier           TEXT(150) NOT NULL,
+    CurrentVersion              TEXT(100) NOT NULL,
+    AvailableVersion            TEXT(100) NOT NULL,
+    UpdateSource                TEXT(50) NOT NULL,
+    DiscoveredAt                DATETIME NOT NULL,
+    Status                      TEXT(30) NOT NULL,
+    FOREIGN KEY (#ID_LOGICIEL) REFERENCES InstalledSoftware(ID_LOGICIEL) ON DELETE CASCADE
+);
+
+ScanSessions (
+    ID_SCAN                     TEXT PRIMARY KEY,
+    ScanType                    TEXT(30) NOT NULL,
+    StartedAt                   DATETIME NOT NULL,
+    CompletedAt                 DATETIME,
+    TotalFilesScanned           INTEGER NOT NULL DEFAULT 0,
+    ThreatsDetectedCount        INTEGER NOT NULL DEFAULT 0,
+    DurationMs                  INTEGER NOT NULL DEFAULT 0,
+    Status                      TEXT(20) NOT NULL
+);
+
+ScannedFiles (
+    ID_FICHIER_SCANNE           TEXT PRIMARY KEY,
+    #ID_SCAN                    TEXT NOT NULL,
+    FilePath                    TEXT(1000) NOT NULL,
+    Sha256Hash                  TEXT(64) NOT NULL,
+    FileSizeBytes               INTEGER NOT NULL,
+    Verdict                     TEXT(20) NOT NULL,
+    CompositeThreatScore        REAL NOT NULL DEFAULT 0.0,
+    ClamAvScore                 REAL NOT NULL DEFAULT 0.0,
+    YaraScore                   REAL NOT NULL DEFAULT 0.0,
+    EmberAiScore                REAL NOT NULL DEFAULT 0.0,
+    ScannedAt                   DATETIME NOT NULL,
+    FOREIGN KEY (#ID_SCAN) REFERENCES ScanSessions(ID_SCAN) ON DELETE CASCADE
+);
+
+QuarantineRecords (
+    ID_QUARANTAINE              TEXT PRIMARY KEY,
+    #ID_FICHIER_SCANNE          TEXT NOT NULL UNIQUE,
+    OriginalFilePath            TEXT(1000) NOT NULL,
+    QuarantineBlobPath          TEXT(1000) NOT NULL,
+    Sha256Hash                  TEXT(64) NOT NULL,
+    HmacSignature               BLOB NOT NULL,
+    AesIv                       BLOB NOT NULL,
+    AesAuthTag                  BLOB NOT NULL,
+    Status                      TEXT(30) NOT NULL,
+    QuarantinedAt               DATETIME NOT NULL,
+    RestoredAt                  DATETIME,
+    FOREIGN KEY (#ID_FICHIER_SCANNE) REFERENCES ScannedFiles(ID_FICHIER_SCANNE) ON DELETE RESTRICT
+);
+
+SecurityReports (
+    ID_RAPPORT                  TEXT PRIMARY KEY,
+    GeneratedAt                 DATETIME NOT NULL,
+    ReportTitle                 TEXT(200) NOT NULL,
+    MachineName                 TEXT(100) NOT NULL,
+    TotalScannedFiles           INTEGER NOT NULL,
+    TotalThreatsFound           INTEGER NOT NULL,
+    TotalVulnerabilitiesFound   INTEGER NOT NULL,
+    TotalUpdatesAvailable       INTEGER NOT NULL,
+    PdfFilePath                 TEXT(500) NOT NULL
+);
+
+==============================================================================
+Fin de la spécification MLD Looping
+==============================================================================
+

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CyberSentinel.AI/CyberSentinel.AI.csproj" />
+    <Project Path="src/CyberSentinel.Application/CyberSentinel.Application.csproj" />
+    <Project Path="src/CyberSentinel.Desktop/CyberSentinel.Desktop.csproj" />
+    <Project Path="src/CyberSentinel.Domain/CyberSentinel.Domain.csproj" />
+    <Project Path="src/CyberSentinel.Infrastructure/CyberSentinel.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CyberSentinel.UnitTests/CyberSentinel.UnitTests.csproj" />
+    <Project Path="tests/CyberSentinel.IntegrationTests/CyberSentinel.IntegrationTests.csproj" />
+    <Project Path="tests/CyberSentinel.SecurityTests/CyberSentinel.SecurityTests.csproj" />
+  </Folder>
+</Solution>

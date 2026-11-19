@@ -1,0 +1,91 @@
+@startuml software_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 8
+skinparam shadowing false
+
+skinparam package {
+    BorderColor #334155
+    FontColor #0F172A
+    FontStyle bold
+}
+
+title **CyberSentinel AI - Architecture Logicielle en Oignon (Clean Architecture)**
+
+package "5. Couche Présentation : CyberSentinel.Desktop (WPF MVVM)" #F8FAFC {
+    [Vues XAML (MainWindow, Dashboard, Scans, etc.)] as Views
+    [ViewModels (DashboardVM, MalwareScannerVM, etc.)] as ViewModels
+    [Commandes Réactives (RelayCommand)] as Commands
+    Views --> ViewModels
+    ViewModels --> Commands
+}
+
+package "4. Couche Intelligence Artificielle : CyberSentinel.AI" #FDF4FF {
+    [Extracteur de Features PE (2381-D)] as FeatureExtractor
+    [Moteur d'Inférence ONNX Runtime] as OnnxEngine
+    [Vecteur EMBER (EmberFeatureVector)] as FeatureVector
+    OnnxEngine --> FeatureExtractor
+    FeatureExtractor --> FeatureVector
+}
+
+package "3. Couche Infrastructure : CyberSentinel.Infrastructure" #FEF3C7 {
+    [Scanner Signatures ClamAV (TCP 3310)] as ClamScanner
+    [Scanner Heuristique YARA] as YaraEngine
+    [Gestionnaire Quarantaine (AES-256-GCM + HMAC)] as QuarantineMgr
+    [Scanner Registre Windows (64/32 bits)] as RegistryScanner
+    [Gestionnaire WinGet CLI] as WinGetMgr
+    [Fournisseurs NVD API 2.0 & OSV] as VulnProviders
+    [Persistance SQLite EF Core] as SqliteRepo
+    [Générateur PDF 1.7 Natif] as PdfGen
+    [Journaliseur de Sécurité RFC 5424] as SecLogger
+}
+
+package "2. Couche Application : CyberSentinel.Application" #F0FDF4 {
+    [Orchestrateur Malware (MalwareScanOrchestrator)] as ScanOrchestrator
+    [Service Inventaire Système (SystemInventoryService)] as InventorySvc
+    [Service Vulnérabilités (VulnerabilityScannerService)] as VulnSvc
+    [Service Mises à Jour (UpdateManagerService)] as UpdateSvc
+    [Service Rapports & Audits (ReportService)] as ReportSvc
+    [Validateur Sécurité Chemins (PathSecurityValidator)] as PathValidator
+    interface "Contrats & Interfaces\n(IScanOrchestrator, IInventoryRepository, etc.)" as Interfaces
+}
+
+package "1. Couche Domaine : CyberSentinel.Domain (Noyau Métier Pur)" #EFF6FF {
+    [Arbitre de Décision (VerdictArbitrator)] as Arbitrator
+    [Entités Métier (ScanSession, InstalledApp, etc.)] as Entities
+    [Objets de Valeur (CpeIdentifier)] as ValueObjects
+    [Énumérations (ThreatVerdict, RiskLevel, etc.)] as Enums
+}
+
+' Flux de dépendance vers l'intérieur (Clean Architecture)
+ViewModels --> ScanOrchestrator
+ViewModels --> InventorySvc
+ViewModels --> VulnSvc
+ViewModels --> UpdateSvc
+ViewModels --> ReportSvc
+ViewModels --> Entities
+
+ScanOrchestrator --> Interfaces
+ScanOrchestrator --> Arbitrator
+ScanOrchestrator --> PathValidator
+InventorySvc --> Interfaces
+VulnSvc --> Interfaces
+UpdateSvc --> Interfaces
+
+ClamScanner ..|> Interfaces
+YaraEngine ..|> Interfaces
+QuarantineMgr ..|> Interfaces
+RegistryScanner ..|> Interfaces
+WinGetMgr ..|> Interfaces
+VulnProviders ..|> Interfaces
+SqliteRepo ..|> Interfaces
+PdfGen ..|> Interfaces
+SecLogger ..|> Interfaces
+OnnxEngine ..|> Interfaces
+
+Arbitrator --> Entities
+Arbitrator --> Enums
+
+@enduml
+

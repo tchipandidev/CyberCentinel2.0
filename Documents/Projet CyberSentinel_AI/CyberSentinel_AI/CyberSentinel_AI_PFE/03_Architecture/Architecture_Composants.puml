@@ -1,0 +1,104 @@
+@startuml components
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+
+skinparam component {
+    BackgroundColor #F8FAFC
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam interface {
+    BackgroundColor #F0FDF4
+    BorderColor #16A34A
+}
+
+skinparam database {
+    BackgroundColor #FEF3C7
+    BorderColor #D97706
+}
+
+skinparam cloud {
+    BackgroundColor #F1F5F9
+    BorderColor #64748B
+}
+
+title **CyberSentinel AI - Diagramme de Composants Logiciels**
+
+package "CyberSentinel AI Solution (.NET 10.0 LTS / C# 14)" {
+
+    [CyberSentinel.Desktop.exe\n(Interface Graphique WPF / MVVM)] as DesktopComp
+
+    [CyberSentinel.Application.dll\n(Cas d'utilisation & Validation)] as AppComp
+
+    [CyberSentinel.Domain.dll\n(Entités & Arbitrage pur)] as DomainComp
+
+    [CyberSentinel.AI.dll\n(Extracteur PE & ONNX Runtime)] as AIComp
+
+    [CyberSentinel.Infrastructure.dll\n(Adaptateurs matériels & OS)] as InfraComp
+
+    interface "IScanOrchestrator" as IScan
+    interface "ISystemInventoryService" as IInventory
+    interface "IVulnerabilityScannerService" as IVuln
+    interface "IUpdateManagerService" as IUpdate
+    interface "IQuarantineService" as IQuarantine
+
+    DesktopComp ..> IScan : utilise
+    DesktopComp ..> IInventory : utilise
+    DesktopComp ..> IVuln : utilise
+    DesktopComp ..> IUpdate : utilise
+    DesktopComp ..> IQuarantine : utilise
+
+    AppComp -up- IScan
+    AppComp -up- IInventory
+    AppComp -up- IVuln
+    AppComp -up- IUpdate
+    AppComp -up- IQuarantine
+
+    AppComp --> DomainComp : dépend
+
+    interface "IAiMalwareClassifier" as IAiClassifier
+    interface "IAntivirusScanner" as IClam
+    interface "IYaraScanner" as IYara
+    interface "IInventoryRepository" as IRepo
+
+    AIComp -up- IAiClassifier
+    InfraComp -up- IClam
+    InfraComp -up- IYara
+    InfraComp -up- IRepo
+
+    AppComp ..> IAiClassifier : délègue
+    AppComp ..> IClam : délègue
+    AppComp ..> IYara : délègue
+    AppComp ..> IRepo : délègue
+    AppComp ..> IQuarantine : implémente / gère
+}
+
+' Composants et Services Externes
+node "Système d'Exploitation Windows" {
+    database "Registre Windows\n(HKLM/HKCU)" as RegHive
+    [Windows Package Manager\n(winget.exe)] as WinGetExe
+    [ClamAV Daemon\n(clamd.exe)] as ClamDaemon
+    database "Base SQLite Locale\n(cyber_sentinel.db)" as SqliteDb
+    folder "Coffre Quarantaine\n(%ProgramData%\\*.qfile)" as VaultDir
+}
+
+cloud "Services Cloud de Sécurité" {
+    [NIST NVD REST API v2.0\n(https://services.nvd.nist.gov)] as NvdApi
+    [Open Source Vulnerabilities API\n(https://api.osv.dev)] as OsvApi
+}
+
+' Connexions externes
+InfraComp --> RegHive : Lecture via Microsoft.Win32
+InfraComp --> WinGetExe : ProcessStartInfo isolé
+InfraComp --> ClamDaemon : Socket TCP (127.0.0.1:3310)
+InfraComp --> SqliteDb : Entity Framework Core 10
+InfraComp --> VaultDir : Chiffrement AES-256-GCM + HMAC
+InfraComp --> NvdApi : Requêtes HTTPS REST (JSON)
+InfraComp --> OsvApi : Requêtes HTTPS REST (JSON)
+
+@enduml
+

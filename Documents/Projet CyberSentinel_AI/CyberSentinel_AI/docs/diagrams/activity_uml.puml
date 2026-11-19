@@ -1,0 +1,89 @@
+@startuml activity_uml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+
+skinparam activity {
+    BackgroundColor #F8FAFC
+    BorderColor #0284C7
+    ArrowColor #0F172A
+}
+
+skinparam diamond {
+    BackgroundColor #FEF3C7
+    BorderColor #D97706
+}
+
+title **CyberSentinel AI - Diagramme d'Activité : Pipeline d'Analyse et Remédiation**
+
+start
+
+:Réception du chemin de fichier cible;
+
+:Validation de sécurité du chemin\n(PathSecurityValidator);
+
+if (Chemin valide, sans traversée,\nsans caractères nuls ni ADS ?) then (Non - Suspect)
+    :Journaliser alerte de sécurité RFC 5424;
+    :Rejeter l'accès et lever SecurityException;
+    stop
+else (Oui - Sécurisé)
+    :Calculer l'empreinte SHA-256 du fichier;
+endif
+
+:Vérifier l'en-tête binaire DOS ("MZ" = 0x4D, 0x5A);
+
+if (Le fichier est-il un exécutable PE ?) then (Non - Fichier générique)
+    :Activer le Fast-Path IA : Inférence bypassée (Score IA = 0.0);
+    fork
+        :Analyse signatures ClamAV;
+    fork again
+        :Analyse règles textuelles YARA;
+    end fork
+else (Oui - Binaire PE Windows)
+    fork
+        :Interrogation démon ClamAV (TCP 3310);
+    fork again
+        :Évaluation règles binaires YARA\n(Injection mémoire, API suspectes);
+    fork again
+        :Extraction statique du vecteur 2381-D\n(Histogrammes, Entropie, IAT, EAT, Sections);
+        :Inférence IA locale ONNX Runtime\n(Modèle supervisé EMBER2024);
+    end fork
+endif
+
+:Agrégation des résultats dans l'Arbitre (VerdictArbitrator);
+
+:Calcul du score composite pondéré\nScore = Max(Clam*1.0, YARA*0.9, IA*0.85);
+
+if (Score de Menace ?) then (Score >= 0.85)
+    #FEE2E2:Verdict = MALWARE\nNiveau de risque = CRITIQUE;
+    
+    if (Action Opérateur : Mise en quarantaine ?) then (Oui)
+        :Générer vecteur d'initialisation IV (96 bits);
+        :Chiffrer le binaire en AES-256-GCM;
+        :Générer le tag d'authentification (128 bits);
+        :Calculer la signature HMAC-SHA256;
+        :Écrire le conteneur ".qfile" dans le coffre;
+        :Supprimer le binaire malveillant original;
+        :Enregistrer l'événement de quarantaine;
+    else (Non / Ignorer)
+        :Consigner l'exception dans le journal d'audit;
+    endif
+
+else if (0.50 <= Score < 0.85) then (Score Moyen / Élevé)
+    #FEF3C7:Verdict = SUSPICIOUS\nNiveau de risque = ÉLEVÉ;
+    :Alerter l'opérateur sur les anomalies comportementales;
+
+else (Score < 0.20)
+    #DCFCE7:Verdict = CLEAN\nNiveau de risque = AUCUN;
+    :Considérer le fichier comme sain;
+endif
+
+:Persister la session de scan dans l'historique;
+:Actualiser les indicateurs du Dashboard en temps réel;
+
+stop
+
+@enduml
+

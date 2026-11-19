@@ -1,0 +1,94 @@
+@startuml deployment
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 6
+skinparam shadowing false
+
+skinparam node {
+    BackgroundColor #F8FAFC
+    BorderColor #0284C7
+    FontColor #0F172A
+}
+
+skinparam artifact {
+    BackgroundColor #F1F5F9
+    BorderColor #475569
+}
+
+skinparam database {
+    BackgroundColor #FEF3C7
+    BorderColor #D97706
+}
+
+skinparam cloud {
+    BackgroundColor #EFF6FF
+    BorderColor #3B82F6
+}
+
+title **CyberSentinel AI - Diagramme de Déploiement Matériel et Système**
+
+node "Station de Travail Client\n(Windows 10 / 11 64-bit)" as ClientNode {
+
+    node "Environnement d'Exécution .NET 10.0 Desktop Runtime" as DotNetRuntime {
+        
+        artifact "CyberSentinel.Desktop.exe\n(Processus Principal WPF)" as DesktopExe
+        
+        artifact "CyberSentinel.Domain.dll" as DllDomain
+        artifact "CyberSentinel.Application.dll" as DllApp
+        artifact "CyberSentinel.Infrastructure.dll" as DllInfra
+        artifact "CyberSentinel.AI.dll" as DllAI
+        
+        artifact "ember_malware_model.onnx\n(Modèle Inférence IA - Hash Certifié)" as ModelOnnx
+        artifact "security_rules.yar\n(Règles Heuristiques YARA)" as YaraRules
+        artifact "appsettings.json\n(Configuration Applicative)" as ConfigFile
+
+        DesktopExe ..> DllDomain
+        DesktopExe ..> DllApp
+        DesktopExe ..> DllInfra
+        DesktopExe ..> DllAI
+        DllAI ..> ModelOnnx : Inférence locale
+        DllInfra ..> YaraRules : Compilation mémoire
+        DesktopExe ..> ConfigFile : Lecture paramètres
+    }
+
+    node "Services & Utilitaires Windows Locaux" as WinServices {
+        artifact "winget.exe\n(Windows Package Manager)" as WinGetCli
+        artifact "clamd.exe\n(Service Démon ClamAV)" as ClamD
+        database "Registre Windows\n(HKLM/HKCU)" as WinRegistry
+    }
+
+    node "Système de Fichiers NTFS" as FileSystem {
+        database "cyber_sentinel.db\n(%LocalAppData%\\CyberSentinel)" as SqliteFile
+        folder "Coffre Quarantaine (.qfile)\n(%ProgramData%\\CyberSentinel\\Quarantine)" as QuarantineVault
+        folder "Journaux d'Audit (.log)\n(%ProgramData%\\CyberSentinel\\Logs)" as LogDir
+    }
+
+    DesktopExe --> WinGetCli : Exécution isolée via ArgumentList
+    DesktopExe --> ClamD : Socket TCP Local (127.0.0.1:3310)
+    DesktopExe --> WinRegistry : Inspection clés Uninstall
+    DesktopExe --> SqliteFile : Connexion EF Core SQLite
+    DesktopExe --> QuarantineVault : Chiffrement AES-256-GCM
+    DesktopExe --> LogDir : Traçabilité RFC 5424
+}
+
+cloud "Services Distants Sécurisés (Internet)" as CloudServices {
+    node "NIST NVD Infrastructure" as NvdCloud {
+        [NVD REST API v2.0\n(HTTPS / Port 443)] as NvdEndpoint
+    }
+
+    node "Google OSV Cloud" as OsvCloud {
+        [OSV REST API\n(HTTPS / Port 443)] as OsvEndpoint
+    }
+
+    node "Dépôts Communautaires Microsoft" as WinGetCloud {
+        [WinGet Package CDN\n(HTTPS / Port 443)] as WinGetCdn
+    }
+}
+
+DesktopExe --> NvdEndpoint : Requêtes REST avec Rate Limiting
+DesktopExe --> OsvEndpoint : Requêtes REST SemVer
+WinGetCli --> WinGetCdn : Téléchargement et vérification des patchs
+
+@enduml
+

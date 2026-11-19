@@ -1,0 +1,164 @@
+==============================================================================
+CYBERSENTINEL AI - MODÈLE CONCEPTUEL DE DONNÉES (MCD MERISE / LOOPING)
+==============================================================================
+Outil de référence : Looping (Logiciel de modélisation Merise)
+Auteur             : Équipe d'Ingénierie CyberSentinel AI
+Date               : Novembre 2026
+Projet             : CyberSentinel AI - Gestion de Sécurité Endpoint Windows
+==============================================================================
+
+------------------------------------------------------------------------------
+1. DICTIONNAIRE DES DONNÉES
+------------------------------------------------------------------------------
+Code Mnémonique     | Libellé                             | Type / Format     | Règles de Gestion
+--------------------+-------------------------------------+-------------------+---------------------------------
+ID_SESSION          | Identifiant unique de session d'inv | GUID (Texte 36)   | Clé primaire (Généré auto)
+DATE_SNAPSHOT       | Date et heure du relevé d'inventaire| DATETIME (UTC)    | Obligatoire, défaut UTC courant
+NB_TOTAL_APPS       | Nombre total d'applications         | ENTIER >= 0       | Calculé
+NB_X64_APPS         | Nombre d'applications 64-bit        | ENTIER >= 0       | Calculé
+NB_X86_APPS         | Nombre d'applications 32-bit        | ENTIER >= 0       | Calculé
+NOM_MACHINE         | Nom d'hôte de la machine Windows    | CHAINE(100)       | Obligatoire
+VERSION_OS          | Version du système d'exploitation   | CHAINE(200)       | Obligatoire (ex: Windows 11 23H2)
+ID_LOGICIEL         | Identifiant unique du logiciel      | GUID (Texte 36)   | Clé primaire
+NOM_AFFICHAGE       | Nom commercial ou d'affichage       | CHAINE(255)       | Obligatoire, non vide
+EDITEUR             | Éditeur du logiciel                 | CHAINE(255)       | "Éditeur inconnu" par défaut
+VERSION_INSTALLEE   | Numéro de version détectée          | CHAINE(100)       | "Non spécifiée" par défaut
+ARCHITECTURE        | Architecture binaire                | ENUM('x64','x86') | Obligatoire
+DATE_INSTALLATION   | Date d'installation originale       | DATE              | Optionnel
+CHEMIN_INSTALLATION | Chemin du dossier d'installation    | CHAINE(500)       | Optionnel
+SOURCE_IDENTIF      | Source d'identification             | CHAINE(100)       | Registry_64, WoW64, WinGet
+ID_PACKAGE_WINGET   | Identifiant officiel WinGet         | CHAINE(150)       | Format: Nom.Editeur (Optionnel)
+CPE_CANONIQUE       | Identifiant standardisé CPE 2.3     | CHAINE(255)       | Format standardisé NIST
+EST_COMPOSANT_SYS   | Indicateur composant système OS     | BOOLEEN (0 ou 1)  | Obligatoire, défaut 0
+DATE_DECOUVERTE     | Date de détection                   | DATETIME (UTC)    | Obligatoire
+CVE_ID              | Identifiant de la vulnérabilité     | CHAINE(20)        | Format: CVE-YYYY-NNNNN
+CVSS_SCORE          | Score CVSS v3.1                     | DECIMAL(3,1)      | Compris entre 0.0 et 10.0
+CVSS_SEVERITE       | Niveau de sévérité CVSS             | ENUM              | Low, Medium, High, Critical
+DESCRIPTION_VULN    | Description technique de la faille  | TEXTE             | Obligatoire
+ID_SCAN             | Identifiant de la session de scan   | GUID (Texte 36)   | Clé primaire
+TYPE_SCAN           | Portée de l'analyse                 | ENUM              | SingleFile, Directory, Full
+DATE_SCAN           | Date et heure du scan               | DATETIME (UTC)    | Obligatoire
+NB_FICHIERS_SCANNES | Nombre de fichiers analysés         | ENTIER >= 0       | Obligatoire
+NB_MENACES_DETECT   | Nombre de menaces trouvées          | ENTIER >= 0       | Obligatoire
+DUREE_SCAN_MS       | Temps de traitement en ms           | ENTIER >= 0       | Obligatoire
+ID_FICHIER_SCANNE   | Identifiant de fichier audité       | GUID (Texte 36)   | Clé primaire
+CHEMIN_FICHIER      | Chemin absolu sur disque            | CHAINE(1000)      | Obligatoire
+SHA256_HASH         | Empreinte cryptographique SHA-256   | CHAINE(64)        | Hexadécimal 64 car.
+VERDICT_FICHIER     | Verdict final de menace             | ENUM              | Clean, Suspicious, Malware
+SCORE_COMPOSITE     | Score de menace normalisé           | DECIMAL(4,3)      | Compris entre 0.000 et 1.000
+ID_QUARANTAINE      | Identifiant du conteneur sécurisé   | GUID (Texte 36)   | Clé primaire
+SIGNATURE_HMAC      | Empreinte d'intégrité HMAC-SHA256   | BINAIRE(32)       | 32 octets (256 bits)
+NONCE_GCM           | Vecteur d'initialisation IV AES-GCM | BINAIRE(12)       | 12 octets (96 bits)
+TAG_GCM             | Tag d'authentification AES-GCM      | BINAIRE(16)       | 16 octets (128 bits)
+
+------------------------------------------------------------------------------
+2. RÈGLES DE GESTION (RG)
+------------------------------------------------------------------------------
+RG01 : Une session d'inventaire contient au moins une application installée (1,n).
+RG02 : Une application installée appartient à une et une seule session d'inventaire (1,1).
+RG03 : Un logiciel installé peut être concerné par zéro, une ou plusieurs CVE (0,n).
+RG04 : Une CVE peut affecter plusieurs logiciels installés distincts (0,n).
+RG05 : Une session de scan enregistre zéro, un ou plusieurs fichiers analysés (0,n).
+RG06 : Un fichier analysé appartient obligatoirement à une session de scan (1,1).
+RG07 : Un fichier analysé déclaré malveillant peut donner lieu à zéro ou une mise en quarantaine (0,1).
+RG08 : Une quarantaine concerne exactement un fichier analysé original (1,1).
+RG09 : Un logiciel installé peut faire l'objet de zéro ou une mise à jour disponible (0,1).
+
+------------------------------------------------------------------------------
+3. DESCRIPTION DES ENTITÉS DU MCD LOOPING
+------------------------------------------------------------------------------
+
+[SESSION_INVENTAIRE]
+- ID_SESSION (GUID) <Clé primaire>
+- DATE_SNAPSHOT (DATETIME)
+- NB_TOTAL_APPS (ENTIER)
+- NB_X64_APPS (ENTIER)
+- NB_X86_APPS (ENTIER)
+- NOM_MACHINE (CHAINE)
+- VERSION_OS (CHAINE)
+
+[LOGICIEL_INSTALLE]
+- ID_LOGICIEL (GUID) <Clé primaire>
+- NOM_AFFICHAGE (CHAINE)
+- EDITEUR (CHAINE)
+- VERSION_INSTALLEE (CHAINE)
+- ARCHITECTURE (CHAINE)
+- DATE_INSTALLATION (DATE)
+- CHEMIN_INSTALLATION (CHAINE)
+- SOURCE_IDENTIF (CHAINE)
+- ID_PACKAGE_WINGET (CHAINE)
+- CPE_CANONIQUE (CHAINE)
+- EST_COMPOSANT_SYS (BOOLEEN)
+- DATE_DECOUVERTE (DATETIME)
+
+[VULNERABILITE_CVE]
+- CVE_ID (CHAINE) <Clé primaire>
+- CVSS_SCORE (DECIMAL)
+- CVSS_SEVERITE (CHAINE)
+- DESCRIPTION_VULN (TEXTE)
+- LIEN_REMEDIATION (CHAINE)
+- DATE_PUBLICATION (DATE)
+
+[SESSION_SCAN]
+- ID_SCAN (GUID) <Clé primaire>
+- TYPE_SCAN (CHAINE)
+- DATE_SCAN (DATETIME)
+- NB_FICHIERS_SCANNES (ENTIER)
+- NB_MENACES_DETECT (ENTIER)
+- DUREE_SCAN_MS (ENTIER)
+- STATUT_SCAN (CHAINE)
+
+[FICHIER_SCANNE]
+- ID_FICHIER_SCANNE (GUID) <Clé primaire>
+- CHEMIN_FICHIER (CHAINE)
+- SHA256_HASH (CHAINE)
+- TAILLE_OCTETS (ENTIER)
+- VERDICT_FICHIER (CHAINE)
+- SCORE_COMPOSITE (DECIMAL)
+- SCORE_CLAMAV (DECIMAL)
+- SCORE_YARA (DECIMAL)
+- SCORE_IA_EMBER (DECIMAL)
+- DATE_ANALYSE (DATETIME)
+
+[ARCHIVE_QUARANTAINE]
+- ID_QUARANTAINE (GUID) <Clé primaire>
+- CHEMIN_ARCHIVE_QFILE (CHAINE)
+- SIGNATURE_HMAC (BINAIRE)
+- NONCE_GCM (BINAIRE)
+- TAG_GCM (BINAIRE)
+- STATUT_QUARANTAINE (CHAINE)
+- DATE_QUARANTAINE (DATETIME)
+- DATE_RESTAURATION (DATETIME)
+
+[MISE_A_JOUR_LOGICIEL]
+- ID_MAJ (GUID) <Clé primaire>
+- VERSION_DISPONIBLE (CHAINE)
+- SOURCE_MAJ (CHAINE)
+- DATE_DETECTION (DATETIME)
+- STATUT_MAJ (CHAINE)
+
+------------------------------------------------------------------------------
+4. ASSOCIATIONS ET CARDINALITÉS LOOPING (FORMAT TEXTUEL STANDARD)
+------------------------------------------------------------------------------
+
+(CONTENIR)
+SESSION_INVENTAIRE  [1,N] ---- (CONTENIR) ---- [1,1]  LOGICIEL_INSTALLE
+
+(AFFECTER)
+LOGICIEL_INSTALLE   [0,N] ---- (AFFECTER) ---- [0,N]  VULNERABILITE_CVE
+Attribut d'association : STATUT_MATCH ('Confirmé', 'Potentiel', 'Corrigé')
+
+(DISPOSER)
+LOGICIEL_INSTALLE   [0,1] ---- (DISPOSER) ---- [1,1]  MISE_A_JOUR_LOGICIEL
+
+(COMPRENDRE)
+SESSION_SCAN        [0,N] ---- (COMPRENDRE) -- [1,1]  FICHIER_SCANNE
+
+(ISOLER)
+FICHIER_SCANNE      [0,1] ---- (ISOLER) ------ [1,1]  ARCHIVE_QUARANTAINE
+Attribut d'association : RAISON_ISOLEMENT (CHAINE)
+
+==============================================================================
+Fin de la spécification MCD Looping
+==============================================================================
+

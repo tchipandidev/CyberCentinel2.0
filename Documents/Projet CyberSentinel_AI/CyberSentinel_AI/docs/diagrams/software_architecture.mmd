@@ -1,0 +1,73 @@
+graph TD
+    %% CyberSentinel AI - Architecture Logicielle en Oignon (Clean Architecture)
+    
+    subgraph Layer5 ["5. Couche Présentation (WPF MVVM Desktop)"]
+        UI_Views["Vues XAML (MainWindow, DashboardView, ScanView, etc.)"]
+        UI_VM["ViewModels (DashboardViewModel, MalwareScannerViewModel, etc.)"]
+        UI_Commands["Commandes Réactives (RelayCommand, AsyncRelayCommand)"]
+    end
+
+    subgraph Layer4 ["4. Couche Intelligence Artificielle (CyberSentinel.AI)"]
+        AI_Extractor["Extracteur PE (PeFeatureExtractor - 2381 Dimensions)"]
+        AI_Inference["Moteur d'Inférence ONNX (OnnxMalwareInferenceService)"]
+        AI_Vector["Vecteur de Caractéristiques (EmberFeatureVector)"]
+    end
+
+    subgraph Layer3 ["3. Couche Infrastructure (CyberSentinel.Infrastructure)"]
+        Infra_AV["Moteurs Statiques (ClamAvScanner, YaraScanner)"]
+        Infra_Sys["Intégration OS (WindowsRegistryScanner, WinGetManager)"]
+        Infra_Vuln["Fournisseurs CVE (NvdVulnerabilityProvider, OsvProvider, CpeResolver)"]
+        Infra_Crypto["Coffre Quarantaine (QuarantineManager - AES-256-GCM + HMAC)"]
+        Infra_DB["Persistance SQLite EF Core (SqliteInventoryRepository)"]
+        Infra_PDF["Générateur PDF 1.7 Natif (PdfReportGenerator)"]
+        Infra_Log["Journalisation Sécurisée RFC 5424 (SecurityLogger)"]
+    end
+
+    subgraph Layer2 ["2. Couche Application (CyberSentinel.Application)"]
+        App_Interfaces["Interfaces de Services (IScanOrchestrator, IInventoryRepository, etc.)"]
+        App_DTOs["Objets de Transfert de Données (DTOs Immutables)"]
+        App_Services["Orchestrateurs Applicatifs (MalwareScanOrchestrator, InventoryService, etc.)"]
+        App_Validator["Validateur de Sécurité (PathSecurityValidator - Anti-traversal)"]
+    end
+
+    subgraph Layer1 ["1. Couche Domaine (CyberSentinel.Domain - Noyau Métier Pur)"]
+        Dom_Entities["Entités Métier (ScanSession, ThreatFinding, InstalledApplication, etc.)"]
+        Dom_Rules["Règles d'Arbitrage Pures (VerdictArbitrator - Calcul de score pondéré)"]
+        Dom_Enums["Énumérations (ThreatVerdict, RiskLevel, CvssSeverity)"]
+        Dom_VO["Objets de Valeur (CpeIdentifier - Format CPE 2.3)"]
+    end
+
+    %% Règle de dépendance stricte vers l'intérieur
+    UI_VM --> App_Services
+    UI_VM --> Dom_Entities
+    UI_Views --> UI_VM
+    
+    Infra_AV -.->|implémente| App_Interfaces
+    Infra_Sys -.->|implémente| App_Interfaces
+    Infra_Vuln -.->|implémente| App_Interfaces
+    Infra_Crypto -.->|implémente| App_Interfaces
+    Infra_DB -.->|implémente| App_Interfaces
+    Infra_PDF -.->|implémente| App_Interfaces
+    Infra_Log -.->|implémente| App_Interfaces
+
+    AI_Inference -.->|implémente| App_Interfaces
+    AI_Inference --> AI_Extractor
+    AI_Extractor --> AI_Vector
+
+    App_Services --> Dom_Entities
+    App_Services --> Dom_Rules
+    App_Services --> App_Interfaces
+    App_Services --> App_Validator
+
+    classDef core fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px;
+    classDef app fill:#F0FDF4,stroke:#22C55E,stroke-width:2px;
+    classDef infra fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px;
+    classDef ai fill:#FDF4FF,stroke:#D946EF,stroke-width:2px;
+    classDef ui fill:#F8FAFC,stroke:#64748B,stroke-width:2px;
+
+    class Dom_Entities,Dom_Rules,Dom_Enums,Dom_VO core;
+    class App_Interfaces,App_DTOs,App_Services,App_Validator app;
+    class Infra_AV,Infra_Sys,Infra_Vuln,Infra_Crypto,Infra_DB,Infra_PDF,Infra_Log infra;
+    class AI_Extractor,AI_Inference,AI_Vector ai;
+    class UI_Views,UI_VM,UI_Commands ui;
+

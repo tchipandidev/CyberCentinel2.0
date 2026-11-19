@@ -1,0 +1,117 @@
+@startuml use_cases
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam handwritten false
+skinparam defaultFontName "Segoe UI"
+skinparam roundCorner 8
+skinparam shadowing false
+
+skinparam actor {
+    BorderColor #1E293B
+    BackgroundColor #F8FAFC
+}
+
+skinparam usecase {
+    BackgroundColor #F1F5F9
+    BorderColor #0EA5E9
+    ArrowColor #0284C7
+}
+
+skinparam package {
+    BorderColor #94A3B8
+    BackgroundColor #FAFAFA
+    FontColor #0F172A
+    FontStyle bold
+}
+
+title **CyberSentinel AI - Diagramme des Cas d'Utilisation Global**
+
+left to right direction
+
+actor "Opérateur de Sécurité\n/ Administrateur" as Admin
+actor "Utilisateur Standard" as User
+actor "Système Windows" as WinSys << Système >>
+actor "NIST NVD / OSV API" as NvdApi << Service Externe >>
+actor "Catalogue WinGet" as WinGetRepo << Service Externe >>
+
+User <|-- Admin
+
+package "Module 1 : Analyse des Menaces & IA" {
+    usecase "UC1.1 : Analyser un fichier unitaire" as UC_ScanFile
+    usecase "UC1.2 : Analyser un dossier récursivement" as UC_ScanDir
+    usecase "UC1.3 : Extraire vecteur PE (2381-D)" as UC_ExtractPe
+    usecase "UC1.4 : Inférence IA EMBER2024 (ONNX)" as UC_Inference
+    usecase "UC1.5 : Scan Signatures ClamAV" as UC_ClamAv
+    usecase "UC1.6 : Scan Heuristique YARA" as UC_Yara
+    usecase "UC1.7 : Arbitrer le verdict composite" as UC_Arbitrate
+}
+
+package "Module 2 : Quarantaine Cryptographique" {
+    usecase "UC2.1 : Isoler en quarantaine AES-256-GCM" as UC_Quarantine
+    usecase "UC2.2 : Restaurer fichier après contrôle HMAC" as UC_Restore
+    usecase "UC2.3 : Purger définitivement la menace" as UC_Purge
+}
+
+package "Module 3 : Inventaire Système Réconcilié" {
+    usecase "UC3.1 : Inspecter le Registre Windows (64/32 bits)" as UC_Registry
+    usecase "UC3.2 : Interroger la liste WinGet locale" as UC_WinGetList
+    usecase "UC3.3 : Réconcilier & dédoublonner l'inventaire" as UC_Reconcile
+}
+
+package "Module 4 : Détection des Vulnérabilités (CVE)" {
+    usecase "UC4.1 : Résoudre la chaîne CPE 2.3" as UC_Cpe
+    usecase "UC4.2 : Rechercher les CVE et scores CVSS" as UC_QueryCve
+    usecase "UC4.3 : Filtrer par plages de version SemVer" as UC_MatchVersion
+}
+
+package "Module 5 : Gestion des Mises à Jour Applicatives" {
+    usecase "UC5.1 : Vérifier les mises à jour disponibles" as UC_CheckUpdates
+    usecase "UC5.2 : Appliquer la mise à jour (Validation UAC)" as UC_ApplyUpdate
+}
+
+package "Module 6 : Dashboard & Reporting" {
+    usecase "UC6.1 : Consulter le tableau de bord temps réel" as UC_Dashboard
+    usecase "UC6.2 : Exporter le rapport d'audit ISO PDF-1.7" as UC_ExportPdf
+}
+
+' Relations Utilisateur / Admin
+User --> UC_ScanFile
+User --> UC_ScanDir
+User --> UC_Dashboard
+
+Admin --> UC_Quarantine
+Admin --> UC_Restore
+Admin --> UC_Purge
+Admin --> UC_Reconcile
+Admin --> UC_QueryCve
+Admin --> UC_CheckUpdates
+Admin --> UC_ApplyUpdate
+Admin --> UC_ExportPdf
+
+' Inclusions et Extensions
+UC_ScanFile ..> UC_ExtractPe : <<include>>
+UC_ScanFile ..> UC_Inference : <<include>>
+UC_ScanFile ..> UC_ClamAv : <<include>>
+UC_ScanFile ..> UC_Yara : <<include>>
+UC_ScanFile ..> UC_Arbitrate : <<include>>
+
+UC_ScanDir ..> UC_ScanFile : <<include>>
+UC_ScanFile <.. UC_Quarantine : <<extend>> (Menace détectée)
+
+UC_Reconcile ..> UC_Registry : <<include>>
+UC_Reconcile ..> UC_WinGetList : <<include>>
+
+UC_QueryCve ..> UC_Cpe : <<include>>
+UC_QueryCve ..> UC_MatchVersion : <<include>>
+UC_CheckUpdates <.. UC_ApplyUpdate : <<extend>> (Mise à jour confirmée)
+
+' Liaisons Systèmes Externes
+UC_ClamAv -- WinSys
+UC_Registry -- WinSys
+UC_WinGetList -- WinGetRepo
+UC_ApplyUpdate -- WinGetRepo
+UC_QueryCve -- NvdApi
+UC_Quarantine -- WinSys
+
+@enduml
+
